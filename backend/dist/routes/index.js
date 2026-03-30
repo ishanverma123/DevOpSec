@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const routes_1 = __importDefault(require("../modules/audit/routes"));
+const routes_2 = __importDefault(require("../modules/auth/routes"));
+const routes_3 = __importDefault(require("../modules/crypto/routes"));
+const routes_4 = __importDefault(require("../modules/roles/routes"));
+const routes_5 = __importDefault(require("../modules/secrets/routes"));
+const routes_6 = __importDefault(require("../modules/users/routes"));
+const router = (0, express_1.Router)();
+router.use("/auth", routes_2.default);
+router.use("/users", routes_6.default);
+router.use("/roles", routes_4.default);
+router.use("/secrets", routes_5.default);
+router.use("/audit", routes_1.default);
+router.use("/crypto", routes_3.default);
+exports.default = router;
