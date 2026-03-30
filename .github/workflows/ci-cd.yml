@@ -52,7 +52,7 @@ jobs:
       EB_APPLICATION_NAME: ${{ secrets.EB_APPLICATION_NAME }}
       EB_ENVIRONMENT_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
       EB_DEPLOY_BUCKET: ${{ secrets.EB_DEPLOY_BUCKET }}
-      VERSION_LABEL: devopsec-backend-${{ github.sha }}
+      VERSION_LABEL: devopsec-backend-${{ github.sha }}-r${{ github.run_id }}-a${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
