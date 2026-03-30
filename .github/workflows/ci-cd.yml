@@ -1,6 +1,9 @@
-name: CD AWS
+name: CI-CD
 
 on:
+  push:
+    branches: ["main"]
+  pull_request:
   workflow_dispatch:
     inputs:
       deploy_backend:
@@ -11,20 +14,44 @@ on:
         description: Deploy frontend to S3 (static website hosting)
         type: boolean
         default: true
-  push:
-    branches: ["main"]
 
 jobs:
+  ci:
+    name: CI Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Backend install + build
+        run: |
+          cd backend
+          npm ci
+          npm run build
+
+      - name: Frontend install + build
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
   deploy-backend:
-    if: github.event_name == 'push' || github.event.inputs.deploy_backend == 'true'
+    name: CD Backend
+    needs: [ci]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_backend == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      EB_APPLICATION_NAME: ${{ vars.EB_APPLICATION_NAME }}
-      EB_ENVIRONMENT_NAME: ${{ vars.EB_ENVIRONMENT_NAME }}
-      EB_DEPLOY_BUCKET: ${{ vars.EB_DEPLOY_BUCKET }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      EB_APPLICATION_NAME: ${{ secrets.EB_APPLICATION_NAME }}
+      EB_ENVIRONMENT_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
+      EB_DEPLOY_BUCKET: ${{ secrets.EB_DEPLOY_BUCKET }}
       VERSION_LABEL: devopsec-backend-${{ github.sha }}
     steps:
       - name: Checkout
@@ -76,14 +103,16 @@ jobs:
           aws elasticbeanstalk wait environment-updated --environment-names "${EB_ENVIRONMENT_NAME}"
 
   deploy-frontend:
-    if: github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true'
+    name: CD Frontend
+    needs: [ci]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_frontend == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      FRONTEND_S3_BUCKET: ${{ vars.FRONTEND_S3_BUCKET }}
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      FRONTEND_S3_BUCKET: ${{ secrets.FRONTEND_S3_BUCKET }}
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
