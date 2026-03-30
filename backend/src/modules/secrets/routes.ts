@@ -56,6 +56,10 @@ const assignSecretSchema = z.object({
   canRotate: z.boolean().default(false)
 });
 
+const runRotationSchema = z.object({
+  force: z.boolean().optional().default(false)
+});
+
 const getOrganizationId = async (userId: string) => {
   const result = await pool.query("SELECT organization_id FROM users WHERE id = $1", [userId]);
   if ((result.rowCount ?? 0) === 0) {
@@ -733,7 +737,7 @@ router.post(
       await client.query("BEGIN");
 
       const secretResult = await client.query(
-        "SELECT id, current_version, encryption_algorithm FROM secrets WHERE id = $1 FOR UPDATE",
+        "SELECT id, current_version, encryption_algorithm, status, expires_at FROM secrets WHERE id = $1 FOR UPDATE",
         [secretId]
       );
 
@@ -776,7 +780,14 @@ router.post(
       await client.query(
         `
           UPDATE secrets
-          SET current_version = $2, updated_at = NOW()
+          SET
+            current_version = $2,
+            status = CASE WHEN status = 'expired' THEN 'active' ELSE status END,
+            expires_at = CASE
+              WHEN expires_at IS NOT NULL AND expires_at < NOW() THEN NOW() + INTERVAL '30 days'
+              ELSE expires_at
+            END,
+            updated_at = NOW()
           WHERE id = $1
         `,
         [secretId, nextVersion]
@@ -972,6 +983,12 @@ router.post(
   "/rotation/run",
   requirePermission("secrets.rotate"),
   asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parsed = runRotationSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid request body" });
+      return;
+    }
+
     const requesterId = req.user?.sub;
     if (!requesterId) {
       res.status(401).json({ message: "Unauthorized" });
@@ -1001,12 +1018,17 @@ router.post(
         SELECT id, current_version, encryption_algorithm
         FROM secrets
         WHERE organization_id = $1
-          AND auto_rotate = TRUE
-          AND rotation_interval_days IS NOT NULL
           AND status = 'active'
-          AND updated_at <= NOW() - (rotation_interval_days::text || ' days')::interval
+          AND (
+            $2::boolean = TRUE
+            OR (
+              auto_rotate = TRUE
+              AND rotation_interval_days IS NOT NULL
+              AND updated_at <= NOW() - (rotation_interval_days::text || ' days')::interval
+            )
+          )
       `,
-      [organizationId]
+      [organizationId, parsed.data.force]
     );
 
     let rotatedCount = 0;
@@ -1051,7 +1073,8 @@ router.post(
     res.status(200).json({
       message: "Rotation policy execution completed",
       expired: expired.rowCount ?? 0,
-      rotated: rotatedCount
+      rotated: rotatedCount,
+      force: parsed.data.force
     });
   })
 );

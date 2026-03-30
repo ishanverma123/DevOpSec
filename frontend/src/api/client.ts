@@ -99,10 +99,11 @@ export const api = {
       body: input
     }),
 
-  runRotationPolicy: (token: string) =>
-    apiRequest<{ message: string; expired: number; rotated: number }>("/secrets/rotation/run", {
+  runRotationPolicy: (token: string, force = false) =>
+    apiRequest<{ message: string; expired: number; rotated: number; force?: boolean }>("/secrets/rotation/run", {
       method: "POST",
-      token
+      token,
+      body: { force }
     }),
 
   rotateSecret: (token: string, secretId: string, value: string) =>

@@ -1,19 +1,115 @@
-name: CD EC2
+name: CD AWS
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: Deploy backend to Elastic Beanstalk
+        type: boolean
+        default: true
+      deploy_frontend:
+        description: Deploy frontend to S3 (static website hosting)
+        type: boolean
+        default: true
   push:
     branches: ["main"]
 
 jobs:
-  deploy:
+  deploy-backend:
+    if: github.event_name == 'push' || github.event.inputs.deploy_backend == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EB_APPLICATION_NAME: ${{ vars.EB_APPLICATION_NAME }}
+      EB_ENVIRONMENT_NAME: ${{ vars.EB_ENVIRONMENT_NAME }}
+      EB_DEPLOY_BUCKET: ${{ vars.EB_DEPLOY_BUCKET }}
+      VERSION_LABEL: devopsec-backend-${{ github.sha }}
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            bash /var/www/devopsec/infra/scripts/deploy.sh
+          node-version: "20"
+
+      - name: Build backend
+        run: |
+          cd backend
+          npm ci
+          npm run build
+
+      - name: Package backend for Beanstalk
+        run: |
+          cd backend
+          zip -r "../${VERSION_LABEL}.zip" . -x "node_modules/*" "*.git*"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload artifact bundle to S3
+        run: |
+          aws s3 cp "${VERSION_LABEL}.zip" "s3://${EB_DEPLOY_BUCKET}/${VERSION_LABEL}.zip"
+
+      - name: Create Beanstalk application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --version-label "${VERSION_LABEL}" \
+            --source-bundle S3Bucket="${EB_DEPLOY_BUCKET}",S3Key="${VERSION_LABEL}.zip"
+
+      - name: Deploy Beanstalk environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${EB_ENVIRONMENT_NAME}" \
+            --version-label "${VERSION_LABEL}"
+
+      - name: Wait for Beanstalk deployment
+        run: |
+          aws elasticbeanstalk wait environment-updated --environment-names "${EB_ENVIRONMENT_NAME}"
+
+  deploy-frontend:
+    if: github.event_name == 'push' || github.event.inputs.deploy_frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      FRONTEND_S3_BUCKET: ${{ vars.FRONTEND_S3_BUCKET }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync frontend dist to S3
+        run: |
+          aws s3 sync frontend/dist "s3://${FRONTEND_S3_BUCKET}" --delete \
+            --cache-control "no-cache" --content-type "text/html" --exclude "*" --include "*.html"
+          aws s3 sync frontend/dist "s3://${FRONTEND_S3_BUCKET}" --delete \
+            --cache-control "public,max-age=31536000,immutable" --exclude "*.html"

@@ -42,6 +42,9 @@ const assignSecretSchema = zod_1.z.object({
     canRead: zod_1.z.boolean().default(true),
     canRotate: zod_1.z.boolean().default(false)
 });
+const runRotationSchema = zod_1.z.object({
+    force: zod_1.z.boolean().optional().default(false)
+});
 const getOrganizationId = async (userId) => {
     const result = await db_1.pool.query("SELECT organization_id FROM users WHERE id = $1", [userId]);
     if ((result.rowCount ?? 0) === 0) {
@@ -564,7 +567,7 @@ router.post("/:id/rotate", (0, rbac_1.requirePermission)("secrets.rotate"), (0, 
     const client = await db_1.pool.connect();
     try {
         await client.query("BEGIN");
-        const secretResult = await client.query("SELECT id, current_version, encryption_algorithm FROM secrets WHERE id = $1 FOR UPDATE", [secretId]);
+        const secretResult = await client.query("SELECT id, current_version, encryption_algorithm, status, expires_at FROM secrets WHERE id = $1 FOR UPDATE", [secretId]);
         if (!secretResult.rowCount) {
             await client.query("ROLLBACK");
             res.status(404).json({ message: "Secret not found" });
@@ -597,7 +600,14 @@ router.post("/:id/rotate", (0, rbac_1.requirePermission)("secrets.rotate"), (0, 
         ]);
         await client.query(`
           UPDATE secrets
-          SET current_version = $2, updated_at = NOW()
+          SET
+            current_version = $2,
+            status = CASE WHEN status = 'expired' THEN 'active' ELSE status END,
+            expires_at = CASE
+              WHEN expires_at IS NOT NULL AND expires_at < NOW() THEN NOW() + INTERVAL '30 days'
+              ELSE expires_at
+            END,
+            updated_at = NOW()
           WHERE id = $1
         `, [secretId, nextVersion]);
         await client.query("COMMIT");
@@ -730,6 +740,11 @@ router.post("/:id/assign", (0, rbac_1.requirePermission)("secrets.assign"), (0, 
     res.status(200).json({ message: "Secret assignment updated" });
 }));
 router.post("/rotation/run", (0, rbac_1.requirePermission)("secrets.rotate"), (0, async_handler_1.asyncHandler)(async (req, res) => {
+    const parsed = runRotationSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+        res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid request body" });
+        return;
+    }
     const requesterId = req.user?.sub;
     if (!requesterId) {
         res.status(401).json({ message: "Unauthorized" });
@@ -752,11 +767,16 @@ router.post("/rotation/run", (0, rbac_1.requirePermission)("secrets.rotate"), (0
         SELECT id, current_version, encryption_algorithm
         FROM secrets
         WHERE organization_id = $1
-          AND auto_rotate = TRUE
-          AND rotation_interval_days IS NOT NULL
           AND status = 'active'
-          AND updated_at <= NOW() - (rotation_interval_days::text || ' days')::interval
-      `, [organizationId]);
+          AND (
+            $2::boolean = TRUE
+            OR (
+              auto_rotate = TRUE
+              AND rotation_interval_days IS NOT NULL
+              AND updated_at <= NOW() - (rotation_interval_days::text || ' days')::interval
+            )
+          )
+      `, [organizationId, parsed.data.force]);
     let rotatedCount = 0;
     for (const row of candidates.rows) {
         const randomValue = crypto_1.default.randomBytes(24).toString("base64url");
@@ -790,7 +810,8 @@ router.post("/rotation/run", (0, rbac_1.requirePermission)("secrets.rotate"), (0
     res.status(200).json({
         message: "Rotation policy execution completed",
         expired: expired.rowCount ?? 0,
-        rotated: rotatedCount
+        rotated: rotatedCount,
+        force: parsed.data.force
     });
 }));
 exports.default = router;

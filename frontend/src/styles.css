@@ -511,6 +511,12 @@ pre {
   gap: 0.7rem;
 }
 
+.module-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .input-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1.2fr 0.9fr auto;
@@ -537,6 +543,13 @@ td {
   text-align: left;
   padding: 0.62rem;
   vertical-align: top;
+}
+
+th input[type="checkbox"],
+td input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #5f6b7f;
 }
 
 th {

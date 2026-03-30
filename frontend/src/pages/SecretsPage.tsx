@@ -18,6 +18,7 @@ export default function SecretsPage() {
   const { token } = useAuth();
   const [secrets, setSecrets] = useState<SecretMeta[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [selectedSecretIds, setSelectedSecretIds] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [nowMs, setNowMs] = useState(Date.now());
@@ -57,6 +58,21 @@ export default function SecretsPage() {
 
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    setSelectedSecretIds((prev) => {
+      const visibleIds = new Set(secrets.map((secret) => secret.id));
+      const next: Record<string, boolean> = {};
+
+      for (const [id, selected] of Object.entries(prev)) {
+        if (selected && visibleIds.has(id)) {
+          next[id] = true;
+        }
+      }
+
+      return next;
+    });
+  }, [secrets]);
 
   const getExpiryDelta = (secret: SecretMeta) => {
     if (!secret.expires_at) {
@@ -192,6 +208,59 @@ export default function SecretsPage() {
     }
   };
 
+  const generateRotationValue = () => {
+    const bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+
+  const rotateSelectedSecrets = async () => {
+    const targets = secrets.filter((secret) => selectedSecretIds[secret.id]);
+
+    if (targets.length === 0) {
+      setError("Select at least one secret to rotate.");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+
+    const results = await Promise.allSettled(
+      targets.map((secret) => api.rotateSecret(token, secret.id, generateRotationValue()))
+    );
+
+    const rotated = results.filter((result) => result.status === "fulfilled").length;
+    const failed = results.length - rotated;
+
+    if (failed > 0) {
+      setError(`${failed} secret(s) could not be rotated. Please check permissions and try again.`);
+    }
+
+    if (rotated > 0) {
+      setSuccess(`${rotated} selected secret(s) rotated successfully.`);
+    }
+
+    setSelectedSecretIds({});
+    await load();
+  };
+
+  const selectedCount = secrets.filter((secret) => selectedSecretIds[secret.id]).length;
+  const allVisibleSelected = secrets.length > 0 && selectedCount === secrets.length;
+
+  const runAutoRotation = async () => {
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.runRotationPolicy(token, true);
+      setSuccess(`${response.message}. Rotated: ${response.rotated}, Expired: ${response.expired}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Auto rotation failed");
+    }
+  };
+
   return (
     <>
       {secrets.length > 0 ? (
@@ -239,9 +308,14 @@ export default function SecretsPage() {
       <section className="module">
         <div className="module-top">
           <h3>Secrets</h3>
-          <button className="btn-compact btn-automation" onClick={() => void api.runRotationPolicy(token)}>
-            Run Auto Rotation
-          </button>
+          <div className="module-actions">
+            <button className="btn-compact btn-assign" onClick={() => void rotateSelectedSecrets()}>
+              Rotate Selected ({selectedCount})
+            </button>
+            <button className="btn-compact btn-automation" onClick={() => void runAutoRotation()}>
+              Run Auto Rotation
+            </button>
+          </div>
         </div>
 
         <div className="input-row input-row-secrets">
@@ -273,6 +347,23 @@ export default function SecretsPage() {
           <table>
             <thead>
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all secrets"
+                    checked={allVisibleSelected}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      const next: Record<string, boolean> = {};
+                      for (const secret of secrets) {
+                        if (checked) {
+                          next[secret.id] = true;
+                        }
+                      }
+                      setSelectedSecretIds(next);
+                    }}
+                  />
+                </th>
                 <th>Name</th>
                 <th>Algorithm</th>
                 <th>Status</th>
@@ -284,6 +375,19 @@ export default function SecretsPage() {
             <tbody>
               {secrets.map((secret) => (
                 <tr key={secret.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${secret.name}`}
+                      checked={Boolean(selectedSecretIds[secret.id])}
+                      onChange={(e) =>
+                        setSelectedSecretIds((prev) => ({
+                          ...prev,
+                          [secret.id]: e.target.checked
+                        }))
+                      }
+                    />
+                  </td>
                   <td>{secret.name}</td>
                   <td className="fixed-face">{secret.encryption_algorithm}</td>
                   <td>{secret.status}</td>
