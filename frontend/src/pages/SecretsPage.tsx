@@ -229,8 +229,18 @@ export default function SecretsPage() {
     setIsLoading(true);
     try {
       const response = await api.getCipherPayload(token, secretId);
-      await copyTextToClipboard(response.cipher.encrypted_value);
-      setSuccess("Cipher copied to clipboard.");
+      const payload = JSON.stringify(
+        {
+          encrypted_value: response.cipher.encrypted_value,
+          iv: response.cipher.iv,
+          auth_tag: response.cipher.auth_tag,
+          encryption_algorithm: response.cipher.encryption_algorithm
+        },
+        null,
+        2
+      );
+      await copyTextToClipboard(payload);
+      setSuccess("Cipher payload JSON copied to clipboard.");
       setIsLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Copy failed");

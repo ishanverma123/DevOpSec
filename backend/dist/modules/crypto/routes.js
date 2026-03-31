@@ -21,7 +21,33 @@ router.post("/decrypt", (0, async_handler_1.asyncHandler)(async (req, res) => {
         res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid request body" });
         return;
     }
-    const plainText = (0, crypto_1.decryptSecret)(parsed.data.encryptedValue, parsed.data.iv, parsed.data.authTag, parsed.data.algorithm);
+    if (parsed.data.algorithm === "aes-256-gcm") {
+        const ivBytes = Buffer.from(parsed.data.iv, "base64");
+        const tagBytes = Buffer.from(parsed.data.authTag, "base64");
+        if (ivBytes.length !== 12) {
+            res.status(400).json({ message: "AES decrypt requires a valid base64 IV (12 bytes)." });
+            return;
+        }
+        if (tagBytes.length !== 16) {
+            res.status(400).json({ message: "AES decrypt requires a valid base64 auth tag (16 bytes)." });
+            return;
+        }
+    }
+    if (parsed.data.algorithm === "des-ede3-cbc") {
+        const ivBytes = Buffer.from(parsed.data.iv, "base64");
+        if (ivBytes.length !== 8) {
+            res.status(400).json({ message: "3DES decrypt requires a valid base64 IV (8 bytes)." });
+            return;
+        }
+    }
+    let plainText = "";
+    try {
+        plainText = (0, crypto_1.decryptSecret)(parsed.data.encryptedValue, parsed.data.iv, parsed.data.authTag, parsed.data.algorithm);
+    }
+    catch {
+        res.status(400).json({ message: "Invalid cipher payload for selected algorithm." });
+        return;
+    }
     res.status(200).json({ plainText });
 }));
 exports.default = router;
