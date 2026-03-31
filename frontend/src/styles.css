@@ -1,21 +1,21 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap");
 
 :root {
-  --page-wash: #f3f4f7;
+  --page-wash: #eef2f7;
   --card-face: #ffffff;
-  --card-tint: #f8f9fc;
-  --border-tone: #d8dde6;
-  --ink: #1f232b;
-  --faded: #6a7282;
-  --sky-blue: #646f84;
-  --sky-deep: #4e5668;
+  --card-tint: #f5f8fc;
+  --border-tone: #cfd8e3;
+  --ink: #18202b;
+  --faded: #5c687a;
+  --sky-blue: #2f5f93;
+  --sky-deep: #224972;
   --flame: #d64545;
-  --moss: #1f8f63;
-  --rail-dark: #323846;
-  --rail-dim: #d0d5df;
-  --glow-violet: #99a1b2;
-  --glow-teal: #c2c8d4;
-  --glow-gold: #eceff5;
+  --moss: #197a57;
+  --rail-dark: #1d2734;
+  --rail-dim: #c9d6e6;
+  --glow-violet: #8fa3ba;
+  --glow-teal: #b9d2e6;
+  --glow-gold: #e5ecf5;
 }
 
 * {
@@ -33,9 +33,9 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at 8% 8%, rgba(255, 255, 255, 0.9), transparent 35%),
-    radial-gradient(circle at 85% 10%, rgba(216, 220, 228, 0.38), transparent 38%),
-    radial-gradient(circle at 75% 90%, rgba(242, 244, 248, 0.8), transparent 34%),
+    radial-gradient(circle at 8% 8%, rgba(255, 255, 255, 0.94), transparent 35%),
+    radial-gradient(circle at 85% 10%, rgba(181, 201, 224, 0.3), transparent 40%),
+    radial-gradient(circle at 75% 90%, rgba(241, 246, 252, 0.86), transparent 34%),
     var(--page-wash);
 }
 
@@ -55,18 +55,28 @@ textarea {
 }
 
 button {
-  border: 1px solid rgba(120, 129, 144, 0.45);
-  background: linear-gradient(135deg, #f8f9fb 0%, #e7eaf0 52%, #d5dae3 100%);
-  color: #2c3442;
+  border: 1px solid #2a5c90;
+  background: linear-gradient(135deg, #3f7cbb 0%, #2f679f 100%);
+  color: #f7fbff;
   border-radius: 10px;
   padding: 0.58rem 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(123, 133, 148, 0.2);
+  box-shadow: 0 10px 22px rgba(47, 92, 141, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 button:hover {
-  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(47, 92, 141, 0.32);
+  filter: brightness(1.02);
+}
+
+button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 input,
@@ -106,13 +116,13 @@ pre {
 
 .entry-card {
   width: min(520px, 96vw);
-  background: linear-gradient(160deg, #ffffff 0%, #f3f5f9 100%);
+  background: linear-gradient(160deg, #ffffff 0%, #edf3fa 100%);
   border: 1px solid var(--border-tone);
   border-radius: 18px;
   padding: 1.4rem;
   display: grid;
   gap: 0.9rem;
-  box-shadow: 0 20px 44px rgba(164, 98, 64, 0.14);
+  box-shadow: 0 20px 44px rgba(64, 94, 129, 0.18);
 }
 
 .entry-card h1 {
@@ -304,6 +314,38 @@ pre {
   }
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 40, 50, 0.5);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: min(560px, 96vw);
+  background: linear-gradient(160deg, #ffffff 0%, #f4f6fa 100%);
+  border: 1px solid var(--border-tone);
+  border-radius: 14px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.7rem;
+  box-shadow: 0 18px 38px rgba(66, 74, 88, 0.25);
+}
+
+.modal-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .workspace {
   min-height: 100vh;
   display: grid;
@@ -312,8 +354,8 @@ pre {
 
 .rail {
   background:
-    linear-gradient(180deg, #3f4653 0%, #2f3540 100%),
-    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.18), transparent 45%);
+    linear-gradient(180deg, #243142 0%, #1b2532 100%),
+    radial-gradient(circle at 100% 0%, rgba(183, 208, 232, 0.26), transparent 48%);
   color: #fff4ec;
   padding: 1rem;
   border-right: 1px solid rgba(97, 44, 31, 0.35);
@@ -382,8 +424,8 @@ pre {
 
 .banner {
   background:
-    linear-gradient(135deg, #ffffff 0%, #f1f3f7 100%),
-    radial-gradient(circle at 92% 15%, rgba(210, 216, 226, 0.35), transparent 40%);
+    linear-gradient(135deg, #ffffff 0%, #edf3fa 100%),
+    radial-gradient(circle at 92% 15%, rgba(172, 197, 226, 0.32), transparent 40%);
   border: 1px solid var(--border-tone);
   border-radius: 14px;
   padding: 1rem;
@@ -391,7 +433,7 @@ pre {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
-  box-shadow: 0 10px 28px rgba(120, 130, 145, 0.13);
+  box-shadow: 0 12px 30px rgba(102, 124, 150, 0.18);
 }
 
 .banner h2 {
@@ -614,7 +656,7 @@ pre {
 }
 
 .notice-hub {
-  background: linear-gradient(150deg, #ffffff 0%, #f2f4f8 100%);
+  background: linear-gradient(150deg, #ffffff 0%, #eef3fa 100%);
   border: 1px solid var(--border-tone);
   border-radius: 14px;
   padding: 0.9rem;
@@ -637,13 +679,13 @@ pre {
 }
 
 .notice-critical {
-  background: #fff0f1;
-  border: 1px solid #e8b1b8;
+  background: #fff2f2;
+  border: 1px solid #e6b8bf;
 }
 
 .notice-warning {
-  background: #fff7ea;
-  border: 1px solid #eac58f;
+  background: #fff8ee;
+  border: 1px solid #e2c496;
 }
 
 .notice-title {
@@ -661,13 +703,13 @@ pre {
 }
 
 .module {
-  background: linear-gradient(150deg, #ffffff 0%, #f2f4f8 100%);
+  background: linear-gradient(150deg, #ffffff 0%, #eef3fa 100%);
   border: 1px solid var(--border-tone);
   border-radius: 14px;
   padding: 1rem;
   display: grid;
   gap: 0.85rem;
-  box-shadow: 0 12px 30px rgba(172, 111, 73, 0.12);
+  box-shadow: 0 14px 30px rgba(90, 113, 140, 0.15);
 }
 
 .module-top {
@@ -744,21 +786,22 @@ th {
 .btn-automation {
   padding: 0.42rem 0.75rem;
   min-height: 34px;
-  background: linear-gradient(135deg, #f4f6fa 0%, #e2e7ef 100%);
-  border-color: #b8c1cf;
-  color: #2f3745;
+  background: linear-gradient(135deg, #3f7cbb 0%, #2f679f 100%);
+  border-color: #2a5c90;
+  color: #f7fbff;
 }
 
 .btn-subtle {
-  background: #f7f9fc;
-  border-color: #c9d1dc;
-  color: #384150;
+  background: #f4f8fd;
+  border-color: #b3c5d9;
+  color: #274563;
+  box-shadow: none;
 }
 
 .btn-assign {
-  background: linear-gradient(135deg, #eef2f8 0%, #d8dee8 100%);
-  border-color: #b4bece;
-  color: #2c3442;
+  background: linear-gradient(135deg, #1f8f63 0%, #18724f 100%);
+  border-color: #166647;
+  color: #f4fff9;
 }
 
 .action-col select {
@@ -776,7 +819,7 @@ th {
 .info-tile {
   border: 1px solid var(--border-tone);
   border-radius: 12px;
-  background: var(--card-tint);
+  background: linear-gradient(155deg, #ffffff 0%, #f2f7fd 100%);
   padding: 0.7rem;
   display: grid;
   gap: 0.3rem;
@@ -805,7 +848,7 @@ th {
 .event-entry {
   border: 1px solid var(--border-tone);
   border-radius: 10px;
-  background: #fffdfb;
+  background: #fdfefe;
   padding: 0.62rem;
   display: grid;
   gap: 0.2rem;

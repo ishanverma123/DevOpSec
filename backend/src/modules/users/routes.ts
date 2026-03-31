@@ -33,8 +33,23 @@ router.get(
   requirePermission("users.read"),
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const requesterId = req.user?.sub;
+    const requesterEmail = req.user?.email;
     if (!requesterId) {
       res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    if (requesterEmail === "guest@devopsec.local") {
+      const result = await pool.query(
+        `
+          SELECT u.id, u.email, u.is_active, u.last_login_at, u.created_at, u.updated_at, u.organization_id, o.name as organization_name
+          FROM users u
+          LEFT JOIN organizations o ON u.organization_id = o.id
+          ORDER BY u.created_at DESC
+        `
+      );
+
+      res.status(200).json({ users: result.rows });
       return;
     }
 

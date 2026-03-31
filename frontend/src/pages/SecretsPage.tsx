@@ -31,6 +31,10 @@ export default function SecretsPage() {
   const [description, setDescription] = useState("");
   const [algorithm, setAlgorithm] = useState<EncryptionAlgorithm>("aes-256-gcm");
   const [expiresInDays, setExpiresInDays] = useState("30");
+  const [editingSecret, setEditingSecret] = useState<SecretMeta | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editValue, setEditValue] = useState("");
 
   const [assignUser, setAssignUser] = useState<Record<string, string>>({});
 
@@ -209,28 +213,28 @@ export default function SecretsPage() {
     }
   };
 
-  const editSecret = async (secret: SecretMeta) => {
-    const nextName = window.prompt("Secret name", secret.name);
-    if (nextName === null) {
+  const openEditModal = (secret: SecretMeta) => {
+    setEditingSecret(secret);
+    setEditName(secret.name);
+    setEditDescription(secret.description ?? "");
+    setEditValue("");
+  };
+
+  const closeEditModal = () => {
+    setEditingSecret(null);
+    setEditName("");
+    setEditDescription("");
+    setEditValue("");
+  };
+
+  const saveEditedSecret = async () => {
+    if (!editingSecret) {
       return;
     }
 
-    const nextDescription = window.prompt("Description", secret.description ?? "");
-    if (nextDescription === null) {
-      return;
-    }
-
-    const nextValue = window.prompt(
-      "New secret value (leave empty to keep current value)",
-      ""
-    );
-    if (nextValue === null) {
-      return;
-    }
-
-    const trimmedName = nextName.trim();
-    const trimmedDescription = nextDescription.trim();
-    const trimmedValue = nextValue.trim();
+    const trimmedName = editName.trim();
+    const trimmedDescription = editDescription.trim();
+    const trimmedValue = editValue.trim();
 
     if (!trimmedName) {
       setError("Secret name cannot be empty.");
@@ -243,11 +247,11 @@ export default function SecretsPage() {
       value?: string;
     } = {};
 
-    if (trimmedName !== secret.name) {
+    if (trimmedName !== editingSecret.name) {
       payload.name = trimmedName;
     }
 
-    if (trimmedDescription !== (secret.description ?? "")) {
+    if (trimmedDescription !== (editingSecret.description ?? "")) {
       payload.description = trimmedDescription;
     }
 
@@ -257,6 +261,7 @@ export default function SecretsPage() {
 
     if (Object.keys(payload).length === 0) {
       setSuccess("No changes to save.");
+      closeEditModal();
       return;
     }
 
@@ -266,8 +271,9 @@ export default function SecretsPage() {
     setIsLoading(true);
 
     try {
-      await api.updateSecret(token, secret.id, payload);
+      await api.updateSecret(token, editingSecret.id, payload);
       setSuccess("Secret updated. Encryption method was preserved automatically.");
+      closeEditModal();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
@@ -554,7 +560,7 @@ export default function SecretsPage() {
                       <button className="btn-compact btn-assign" onClick={() => void assign(secret.id)}>
                         Assign
                       </button>
-                      <button className="btn-compact" onClick={() => void editSecret(secret)}>
+                      <button className="btn-compact" onClick={() => openEditModal(secret)}>
                         Edit
                       </button>
                       <button className="btn-compact" onClick={() => void deleteSecret(secret)}>
@@ -568,6 +574,34 @@ export default function SecretsPage() {
           </table>
         </div>
       </section>
+
+      {editingSecret ? (
+        <div className="modal-backdrop" onClick={closeEditModal}>
+          <article className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <h3>Edit Secret</h3>
+            <p className="side-note">Algorithm stays as {editingSecret.encryption_algorithm}. New value is auto-encrypted.</p>
+            <div className="modal-form">
+              <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Secret name" />
+              <input
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Description"
+              />
+              <input
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                placeholder="New secret value (optional)"
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="btn-compact" onClick={closeEditModal}>Cancel</button>
+              <button className="btn-compact btn-assign" onClick={() => void saveEditedSecret()}>
+                Save Changes
+              </button>
+            </div>
+          </article>
+        </div>
+      ) : null}
     </>
   );
 }

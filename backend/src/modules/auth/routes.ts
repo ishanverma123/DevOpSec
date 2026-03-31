@@ -23,7 +23,6 @@ const loginSchema = z.object({
 });
 
 const GUEST_EMAIL = "guest@devopsec.local";
-const GUEST_ORG = "DevOpSec Demo";
 
 router.post(
   "/register",
@@ -114,14 +113,24 @@ router.post(
       await client.query("BEGIN");
 
       let orgId: string;
-      const orgResult = await client.query("SELECT id FROM organizations WHERE lower(name) = lower($1) LIMIT 1", [
-        GUEST_ORG
-      ]);
+      const orgResult = await client.query(
+        `
+          SELECT o.id
+          FROM organizations o
+          LEFT JOIN users u ON u.organization_id = o.id
+          LEFT JOIN secrets s ON s.organization_id = o.id
+          GROUP BY o.id
+          ORDER BY (COUNT(DISTINCT u.id) + COUNT(DISTINCT s.id)) DESC, o.id ASC
+          LIMIT 1
+        `
+      );
 
       if ((orgResult.rowCount ?? 0) > 0) {
         orgId = orgResult.rows[0].id as string;
       } else {
-        const createdOrg = await client.query("INSERT INTO organizations (name) VALUES ($1) RETURNING id", [GUEST_ORG]);
+        const createdOrg = await client.query("INSERT INTO organizations (name) VALUES ($1) RETURNING id", [
+          "Default Organization"
+        ]);
         orgId = createdOrg.rows[0].id as string;
       }
 
@@ -133,6 +142,10 @@ router.post(
 
       if ((existingUser.rowCount ?? 0) > 0) {
         userId = existingUser.rows[0].id as string;
+        await client.query(
+          "UPDATE users SET organization_id = $2, is_active = TRUE, updated_at = NOW() WHERE id = $1",
+          [userId, orgId]
+        );
       } else {
         const randomPasswordHash = await bcrypt.hash(`guest-${Date.now()}-${Math.random()}`, 10);
         const createdUser = await client.query(

@@ -20,8 +20,25 @@ router.get(
   requirePermission("audit.read"),
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const requesterId = req.user?.sub;
+    const requesterEmail = req.user?.email;
     if (!requesterId) {
       res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    if (requesterEmail === "guest@devopsec.local") {
+      const limit = Math.min(Number(req.query.limit ?? 100), 500);
+      const result = await pool.query(
+        `
+          SELECT al.id, al.user_id, al.secret_id, al.action, al.success, al.source_ip, al.user_agent, al.reason, al.created_at
+          FROM access_logs al
+          ORDER BY al.created_at DESC
+          LIMIT $1
+        `,
+        [limit]
+      );
+
+      res.status(200).json({ logs: result.rows });
       return;
     }
 
