@@ -21,9 +21,11 @@ export default function DecryptPage() {
   const [authTag, setAuthTag] = useState("");
   const [plainText, setPlainText] = useState("");
   const [error, setError] = useState("");
+  const [isDecrypting, setIsDecrypting] = useState(false);
 
   const decrypt = async () => {
     setError("");
+    setIsDecrypting(true);
 
     try {
       let encryptedValue = payload.trim();
@@ -63,6 +65,8 @@ export default function DecryptPage() {
       setPlainText(result.plainText);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Decrypt failed");
+    } finally {
+      setIsDecrypting(false);
     }
   };
 
@@ -93,7 +97,15 @@ export default function DecryptPage() {
         onChange={(e) => setPayload(e.target.value)}
         placeholder='Paste cipher text directly OR JSON {"encrypted_value":"...","iv":"...","auth_tag":"...","encryption_algorithm":"aes-256-gcm"}'
       />
-      <button onClick={decrypt}>Decrypt Payload</button>
+      <button onClick={decrypt} disabled={isDecrypting}>
+        {isDecrypting ? "Decrypting..." : "Decrypt Payload"}
+      </button>
+      {isDecrypting ? (
+        <div className="loader-inline" role="status" aria-live="polite">
+          <span className="loader-dot" />
+          <p>Decrypting payload...</p>
+        </div>
+      ) : null}
       {error ? <p className="fail-text">{error}</p> : null}
       {plainText ? <pre className="plain-view fixed-face">{plainText}</pre> : null}
     </section>

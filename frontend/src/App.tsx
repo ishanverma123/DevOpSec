@@ -5,6 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import DashboardLayout from "./layouts/DashboardLayout";
 import AuditPage from "./pages/AuditPage";
 import DecryptPage from "./pages/DecryptPage";
+import LandingPage from "./pages/LandingPage";
 import RolesPage from "./pages/RolesPage";
 import SecretsPage from "./pages/SecretsPage";
 import SignInPage from "./pages/SignInPage";
@@ -16,7 +17,7 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<Navigate to="/signin" replace />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
 
@@ -31,7 +32,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/signin" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

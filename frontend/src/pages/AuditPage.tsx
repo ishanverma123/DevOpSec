@@ -8,6 +8,7 @@ export default function AuditPage() {
   const { token } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const run = async () => {
@@ -16,6 +17,8 @@ export default function AuditPage() {
         setLogs(result.logs);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load audit logs");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -27,6 +30,12 @@ export default function AuditPage() {
       <div className="module-top">
         <h3>Audit Timeline</h3>
       </div>
+      {isLoading ? (
+        <div className="loader-inline" role="status" aria-live="polite">
+          <span className="loader-dot" />
+          <p>Loading audit timeline...</p>
+        </div>
+      ) : null}
       {error ? <p className="fail-text">{error}</p> : null}
       <div className="event-feed">
         {logs.map((log) => (

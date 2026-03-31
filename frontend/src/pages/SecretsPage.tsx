@@ -21,6 +21,8 @@ export default function SecretsPage() {
   const [selectedSecretIds, setSelectedSecretIds] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loadingText, setLoadingText] = useState("Loading secrets...");
+  const [isLoading, setIsLoading] = useState(true);
   const [nowMs, setNowMs] = useState(Date.now());
   const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
 
@@ -34,6 +36,7 @@ export default function SecretsPage() {
 
   const load = async () => {
     setError("");
+    setIsLoading(true);
     const [secretsRes, usersRes] = await Promise.allSettled([api.getSecrets(token), api.getUsers(token)]);
 
     if (secretsRes.status === "fulfilled") {
@@ -45,6 +48,8 @@ export default function SecretsPage() {
     if (usersRes.status === "fulfilled") {
       setUsers(usersRes.value.users);
     }
+
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -143,6 +148,8 @@ export default function SecretsPage() {
   const createSecret = async () => {
     setError("");
     setSuccess("");
+    setLoadingText("Creating secret...");
+    setIsLoading(true);
 
     try {
       await api.createSecret(token, {
@@ -163,30 +170,38 @@ export default function SecretsPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
+      setIsLoading(false);
     }
   };
 
   const accessSecret = async (secretId: string) => {
     setError("");
     setSuccess("");
+    setLoadingText("Accessing secret...");
+    setIsLoading(true);
     try {
       const response = await api.accessSecret(token, secretId);
       setSuccess(`Plain text: ${response.value}`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Access failed");
+      setIsLoading(false);
     }
   };
 
   const copyCipher = async (secretId: string) => {
     setError("");
     setSuccess("");
+    setLoadingText("Copying cipher...");
+    setIsLoading(true);
     try {
       const response = await api.getCipherPayload(token, secretId);
       await navigator.clipboard.writeText(response.cipher.encrypted_value);
       setSuccess("Cipher copied to clipboard.");
+      setIsLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Copy failed");
+      setIsLoading(false);
     }
   };
 
@@ -199,12 +214,16 @@ export default function SecretsPage() {
 
     setError("");
     setSuccess("");
+    setLoadingText("Assigning secret...");
+    setIsLoading(true);
 
     try {
       await api.assignSecret(token, secretId, { userId, canRead: true, canRotate: false });
       setSuccess("Secret assigned.");
+      setIsLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Assign failed");
+      setIsLoading(false);
     }
   };
 
@@ -225,6 +244,8 @@ export default function SecretsPage() {
 
     setError("");
     setSuccess("");
+    setLoadingText("Rotating selected secrets...");
+    setIsLoading(true);
 
     const results = await Promise.allSettled(
       targets.map((secret) => api.rotateSecret(token, secret.id, generateRotationValue()))
@@ -251,6 +272,8 @@ export default function SecretsPage() {
   const runAutoRotation = async () => {
     setError("");
     setSuccess("");
+    setLoadingText("Running auto rotation...");
+    setIsLoading(true);
 
     try {
       const response = await api.runRotationPolicy(token, true);
@@ -258,11 +281,21 @@ export default function SecretsPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Auto rotation failed");
+      setIsLoading(false);
     }
   };
 
   return (
     <>
+      {isLoading ? (
+        <section className="module">
+          <div className="loader-inline" role="status" aria-live="polite">
+            <span className="loader-dot" />
+            <p>{loadingText}</p>
+          </div>
+        </section>
+      ) : null}
+
       {secrets.length > 0 ? (
         <RiskInsightsPanel />
       ) : (

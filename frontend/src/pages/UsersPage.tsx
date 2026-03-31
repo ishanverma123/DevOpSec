@@ -8,6 +8,7 @@ export default function UsersPage() {
   const { token } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const run = async () => {
@@ -16,6 +17,8 @@ export default function UsersPage() {
         setUsers(result.users);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load users");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -27,6 +30,12 @@ export default function UsersPage() {
       <div className="module-top">
         <h3>Users</h3>
       </div>
+      {isLoading ? (
+        <div className="loader-inline" role="status" aria-live="polite">
+          <span className="loader-dot" />
+          <p>Loading users...</p>
+        </div>
+      ) : null}
       {error ? <p className="fail-text">{error}</p> : null}
       <div className="tile-grid">
         {users.map((user) => (
