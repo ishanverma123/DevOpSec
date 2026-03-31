@@ -98,6 +98,7 @@ router.get("/", (0, rbac_1.requirePermission)("secrets.read"), (0, async_handler
                  s.last_accessed_at, s.access_count, s.created_at, s.updated_at, s.expires_at,
                  s.rotation_interval_days, s.auto_rotate, s.encryption_algorithm
           FROM secrets s
+          WHERE s.status <> 'revoked'
           ORDER BY s.created_at DESC
         `);
         res.status(200).json({ secrets: result.rows });
@@ -117,6 +118,7 @@ router.get("/", (0, rbac_1.requirePermission)("secrets.read"), (0, async_handler
         FROM secrets s
         LEFT JOIN secret_assignments sa ON sa.secret_id = s.id AND sa.user_id = $2
         WHERE s.organization_id = $3
+          AND s.status <> 'revoked'
           AND (
             $1::boolean = TRUE
             OR s.owner_user_id = $2
