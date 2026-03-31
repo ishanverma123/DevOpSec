@@ -12,13 +12,33 @@ const env_1 = require("./config/env");
 const error_1 = require("./middleware/error");
 const routes_1 = __importDefault(require("./routes"));
 const app = (0, express_1.default)();
+const allowedOrigins = env_1.env.CORS_ORIGIN.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow same-server calls and tools that don't send Origin.
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+        if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+        callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204
+};
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)({
-    origin: env_1.env.CORS_ORIGIN
-}));
+app.use((0, cors_1.default)(corsOptions));
+app.options("*", (0, cors_1.default)(corsOptions));
 app.use((0, express_rate_limit_1.rateLimit)({
     windowMs: 15 * 60 * 1000,
     limit: 300,
+    skip: (req) => req.method === "OPTIONS",
     standardHeaders: true,
     legacyHeaders: false
 }));
