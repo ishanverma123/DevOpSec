@@ -174,17 +174,21 @@ export default function SecretsPage() {
     }
   };
 
-  const accessSecret = async (secretId: string) => {
+  const viewCipher = async (secretId: string) => {
     setError("");
     setSuccess("");
-    setLoadingText("Accessing secret...");
+    setLoadingText("Fetching encrypted payload...");
     setIsLoading(true);
+
     try {
-      const response = await api.accessSecret(token, secretId);
-      setSuccess(`Plain text: ${response.value}`);
-      await load();
+      const response = await api.getCipherPayload(token, secretId);
+      const preview = response.cipher.encrypted_value.length > 64
+        ? `${response.cipher.encrypted_value.slice(0, 64)}...`
+        : response.cipher.encrypted_value;
+      setSuccess(`Encrypted value preview: ${preview}`);
+      setIsLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Access failed");
+      setError(err instanceof Error ? err.message : "Cipher fetch failed");
       setIsLoading(false);
     }
   };
@@ -201,6 +205,93 @@ export default function SecretsPage() {
       setIsLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Copy failed");
+      setIsLoading(false);
+    }
+  };
+
+  const editSecret = async (secret: SecretMeta) => {
+    const nextName = window.prompt("Secret name", secret.name);
+    if (nextName === null) {
+      return;
+    }
+
+    const nextDescription = window.prompt("Description", secret.description ?? "");
+    if (nextDescription === null) {
+      return;
+    }
+
+    const nextValue = window.prompt(
+      "New secret value (leave empty to keep current value)",
+      ""
+    );
+    if (nextValue === null) {
+      return;
+    }
+
+    const trimmedName = nextName.trim();
+    const trimmedDescription = nextDescription.trim();
+    const trimmedValue = nextValue.trim();
+
+    if (!trimmedName) {
+      setError("Secret name cannot be empty.");
+      return;
+    }
+
+    const payload: {
+      name?: string;
+      description?: string;
+      value?: string;
+    } = {};
+
+    if (trimmedName !== secret.name) {
+      payload.name = trimmedName;
+    }
+
+    if (trimmedDescription !== (secret.description ?? "")) {
+      payload.description = trimmedDescription;
+    }
+
+    if (trimmedValue) {
+      payload.value = trimmedValue;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setSuccess("No changes to save.");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setLoadingText("Saving secret changes...");
+    setIsLoading(true);
+
+    try {
+      await api.updateSecret(token, secret.id, payload);
+      setSuccess("Secret updated. Encryption method was preserved automatically.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+      setIsLoading(false);
+    }
+  };
+
+  const deleteSecret = async (secret: SecretMeta) => {
+    const confirmed = window.confirm(`Revoke secret \"${secret.name}\"? This will mark it as revoked.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setLoadingText("Revoking secret...");
+    setIsLoading(true);
+
+    try {
+      await api.revokeSecret(token, secret.id);
+      setSuccess("Secret revoked successfully.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
       setIsLoading(false);
     }
   };
@@ -438,8 +529,8 @@ export default function SecretsPage() {
                   </td>
                   <td>
                     <div className="action-col">
-                      <button className="btn-compact btn-subtle" onClick={() => void accessSecret(secret.id)}>
-                        Access
+                      <button className="btn-compact btn-subtle" onClick={() => void viewCipher(secret.id)}>
+                        View Cipher
                       </button>
                       <button className="btn-compact btn-subtle" onClick={() => void copyCipher(secret.id)}>
                         Copy Cipher
@@ -462,6 +553,12 @@ export default function SecretsPage() {
                       </select>
                       <button className="btn-compact btn-assign" onClick={() => void assign(secret.id)}>
                         Assign
+                      </button>
+                      <button className="btn-compact" onClick={() => void editSecret(secret)}>
+                        Edit
+                      </button>
+                      <button className="btn-compact" onClick={() => void deleteSecret(secret)}>
+                        Delete
                       </button>
                     </div>
                   </td>

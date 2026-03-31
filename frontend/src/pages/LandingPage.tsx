@@ -1,13 +1,28 @@
 import { Link, Navigate } from "react-router-dom";
+import { useState } from "react";
 
 import { useAuth } from "../context/AuthContext";
 
 export default function LandingPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loginAsGuest } = useAuth();
+  const [error, setError] = useState("");
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard/secrets" replace />;
   }
+
+  const enterAsGuest = async () => {
+    setError("");
+    setIsGuestLoading(true);
+
+    try {
+      await loginAsGuest();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Guest access failed");
+      setIsGuestLoading(false);
+    }
+  };
 
   return (
     <main className="landing-shell">
@@ -25,7 +40,11 @@ export default function LandingPage() {
           <Link className="landing-cta-ghost" to="/signin">
             Sign In
           </Link>
+          <button className="landing-cta-ghost" onClick={() => void enterAsGuest()} disabled={isGuestLoading}>
+            {isGuestLoading ? "Entering as Guest..." : "Continue as Guest (Super User)"}
+          </button>
         </div>
+        {error ? <p className="fail-text">{error}</p> : null}
       </section>
 
       <section className="landing-metrics">

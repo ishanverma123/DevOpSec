@@ -17,6 +17,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  loginAsGuest: () => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => void;
 };
@@ -60,6 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       login: async (email, password) => {
         const response = await api.login({ email, password });
+        persistToken(response.token);
+        await loadUserProfile(response.token);
+      },
+      loginAsGuest: async () => {
+        const response = await api.guestLogin();
         persistToken(response.token);
         await loadUserProfile(response.token);
       },

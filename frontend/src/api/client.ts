@@ -40,6 +40,11 @@ export const api = {
       body: input
     }),
 
+  guestLogin: () =>
+    apiRequest<{ token: string; user: { id: string; email: string } }>("/auth/guest", {
+      method: "POST"
+    }),
+
   getSecrets: (token: string) =>
     apiRequest<{ secrets: SecretMeta[] }>("/secrets", {
       token
@@ -64,6 +69,24 @@ export const api = {
   ) =>
     apiRequest<{ secret: SecretMeta }>("/secrets", {
       method: "POST",
+      token,
+      body: input
+    }),
+
+  updateSecret: (
+    token: string,
+    secretId: string,
+    input: {
+      name?: string;
+      value?: string;
+      description?: string;
+      autoRotate?: boolean;
+      rotationIntervalDays?: number;
+      expiresInDays?: number;
+    }
+  ) =>
+    apiRequest<{ secret: SecretMeta }>(`/secrets/${secretId}`, {
+      method: "PATCH",
       token,
       body: input
     }),

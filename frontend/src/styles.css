@@ -245,6 +245,10 @@ pre {
   padding: 0.58rem 0.9rem;
 }
 
+.landing-cta-row button {
+  box-shadow: none;
+}
+
 .landing-cta-primary {
   border: 1px solid #7f8b9f;
   background: linear-gradient(135deg, #5c6780 0%, #4b556d 100%);

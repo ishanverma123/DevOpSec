@@ -26,6 +26,7 @@ const createSecretSchema = zod_1.z.object({
 const updateSecretSchema = zod_1.z
     .object({
     name: zod_1.z.string().min(2).max(150).optional(),
+    value: zod_1.z.string().min(1).optional(),
     description: zod_1.z.string().optional(),
     autoRotate: zod_1.z.boolean().optional(),
     rotationIntervalDays: zod_1.z.number().int().positive().max(365).optional(),
@@ -478,43 +479,94 @@ router.patch("/:id", (0, rbac_1.requirePermission)("secrets.update"), (0, async_
         res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid request body" });
         return;
     }
-    const updates = [];
-    const values = [];
-    if (parsed.data.name !== undefined) {
-        values.push(parsed.data.name);
-        updates.push(`name = $${values.length}`);
+    const client = await db_1.pool.connect();
+    try {
+        await client.query("BEGIN");
+        const currentResult = await client.query("SELECT id, current_version, encryption_algorithm FROM secrets WHERE id = $1 FOR UPDATE", [secretId]);
+        if (!currentResult.rowCount) {
+            await client.query("ROLLBACK");
+            res.status(404).json({ message: "Secret not found" });
+            return;
+        }
+        const updates = [];
+        const values = [];
+        if (parsed.data.name !== undefined) {
+            values.push(parsed.data.name);
+            updates.push(`name = $${values.length}`);
+        }
+        if (parsed.data.description !== undefined) {
+            values.push(parsed.data.description);
+            updates.push(`description = $${values.length}`);
+        }
+        if (parsed.data.autoRotate !== undefined) {
+            values.push(parsed.data.autoRotate);
+            updates.push(`auto_rotate = $${values.length}`);
+        }
+        if (parsed.data.rotationIntervalDays !== undefined) {
+            values.push(parsed.data.rotationIntervalDays);
+            updates.push(`rotation_interval_days = $${values.length}`);
+        }
+        if (parsed.data.expiresInDays !== undefined) {
+            const nextExpiry = new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000);
+            values.push(nextExpiry);
+            updates.push(`expires_at = $${values.length}`);
+        }
+        if (parsed.data.value !== undefined) {
+            const currentVersion = Number(currentResult.rows[0].current_version);
+            const algorithm = currentResult.rows[0].encryption_algorithm;
+            const encrypted = (0, crypto_2.encryptSecret)(parsed.data.value, algorithm);
+            const nextVersion = currentVersion + 1;
+            await client.query(`
+            INSERT INTO secret_versions (
+              secret_id,
+              version,
+              encrypted_value,
+              iv,
+              auth_tag,
+              key_version,
+              created_by,
+              encryption_algorithm
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [
+                secretId,
+                nextVersion,
+                encrypted.encryptedValue,
+                encrypted.iv,
+                encrypted.authTag,
+                "v1",
+                requesterId,
+                algorithm
+            ]);
+            values.push(nextVersion);
+            updates.push(`current_version = $${values.length}`);
+        }
+        values.push(secretId);
+        const result = await client.query(`
+          UPDATE secrets
+          SET ${updates.join(", ")}, updated_at = NOW()
+          WHERE id = $${values.length}
+          RETURNING id, name, description, owner_user_id, current_version, status,
+              last_accessed_at, access_count, created_at, updated_at,
+              expires_at, rotation_interval_days, auto_rotate, encryption_algorithm
+        `, values);
+        await client.query("COMMIT");
+        await (0, audit_1.insertAuditLog)({
+            userId: requesterId,
+            secretId,
+            action: "update_secret",
+            success: true,
+            req
+        });
+        res.status(200).json({ secret: result.rows[0] });
     }
-    if (parsed.data.description !== undefined) {
-        values.push(parsed.data.description);
-        updates.push(`description = $${values.length}`);
+    catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
     }
-    if (parsed.data.autoRotate !== undefined) {
-        values.push(parsed.data.autoRotate);
-        updates.push(`auto_rotate = $${values.length}`);
+    finally {
+        client.release();
     }
-    if (parsed.data.rotationIntervalDays !== undefined) {
-        values.push(parsed.data.rotationIntervalDays);
-        updates.push(`rotation_interval_days = $${values.length}`);
-    }
-    if (parsed.data.expiresInDays !== undefined) {
-        const nextExpiry = new Date(Date.now() + parsed.data.expiresInDays * 24 * 60 * 60 * 1000);
-        values.push(nextExpiry);
-        updates.push(`expires_at = $${values.length}`);
-    }
-    values.push(secretId);
-    const result = await db_1.pool.query(`
-        UPDATE secrets
-        SET ${updates.join(", ")}, updated_at = NOW()
-        WHERE id = $${values.length}
-        RETURNING id, name, description, owner_user_id, current_version, status,
-            last_accessed_at, access_count, created_at, updated_at,
-            expires_at, rotation_interval_days, auto_rotate, encryption_algorithm
-      `, values);
-    if (!result.rowCount) {
-        res.status(404).json({ message: "Secret not found" });
-        return;
-    }
-    res.status(200).json({ secret: result.rows[0] });
 }));
 router.delete("/:id", (0, rbac_1.requirePermission)("secrets.revoke"), (0, async_handler_1.asyncHandler)(async (req, res) => {
     const secretId = String(req.params.id);

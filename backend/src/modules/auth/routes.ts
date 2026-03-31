@@ -22,6 +22,9 @@ const loginSchema = z.object({
   password: z.string().min(8)
 });
 
+const GUEST_EMAIL = "guest@devopsec.local";
+const GUEST_ORG = "DevOpSec Demo";
+
 router.post(
   "/register",
   asyncHandler(async (req, res) => {
@@ -100,6 +103,93 @@ router.post(
     });
 
     res.status(201).json({ token, user });
+  })
+);
+
+router.post(
+  "/guest",
+  asyncHandler(async (req, res) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      let orgId: string;
+      const orgResult = await client.query("SELECT id FROM organizations WHERE lower(name) = lower($1) LIMIT 1", [
+        GUEST_ORG
+      ]);
+
+      if ((orgResult.rowCount ?? 0) > 0) {
+        orgId = orgResult.rows[0].id as string;
+      } else {
+        const createdOrg = await client.query("INSERT INTO organizations (name) VALUES ($1) RETURNING id", [GUEST_ORG]);
+        orgId = createdOrg.rows[0].id as string;
+      }
+
+      let userId: string;
+      const existingUser = await client.query(
+        "SELECT id, email FROM users WHERE lower(email) = lower($1) LIMIT 1",
+        [GUEST_EMAIL]
+      );
+
+      if ((existingUser.rowCount ?? 0) > 0) {
+        userId = existingUser.rows[0].id as string;
+      } else {
+        const randomPasswordHash = await bcrypt.hash(`guest-${Date.now()}-${Math.random()}`, 10);
+        const createdUser = await client.query(
+          `
+            INSERT INTO users (email, password_hash, organization_id, is_active)
+            VALUES ($1, $2, $3, TRUE)
+            RETURNING id
+          `,
+          [GUEST_EMAIL, randomPasswordHash, orgId]
+        );
+        userId = createdUser.rows[0].id as string;
+      }
+
+      const adminRole = await client.query("SELECT id FROM roles WHERE name = 'Admin' LIMIT 1");
+      if ((adminRole.rowCount ?? 0) === 0) {
+        await client.query("ROLLBACK");
+        res.status(500).json({ message: "Admin role not found. Seed roles before using guest access." });
+        return;
+      }
+
+      await client.query(
+        `
+          INSERT INTO user_roles (user_id, role_id)
+          VALUES ($1, $2)
+          ON CONFLICT (user_id, role_id) DO NOTHING
+        `,
+        [userId, adminRole.rows[0].id]
+      );
+
+      await client.query("UPDATE users SET last_login_at = NOW(), updated_at = NOW(), is_active = TRUE WHERE id = $1", [
+        userId
+      ]);
+
+      await client.query("COMMIT");
+
+      const token = jwt.sign({ sub: userId, email: GUEST_EMAIL }, env.JWT_SECRET, { expiresIn: "1h" });
+
+      await insertAuditLog({
+        userId,
+        action: "login",
+        success: true,
+        req
+      });
+
+      res.status(200).json({
+        token,
+        user: {
+          id: userId,
+          email: GUEST_EMAIL
+        }
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   })
 );
 

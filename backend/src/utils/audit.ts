@@ -6,6 +6,7 @@ type AuditAction =
   | "read_metadata"
   | "read_secret"
   | "create_secret"
+  | "update_secret"
   | "rotate_secret"
   | "revoke_secret"
   | "create_user"
