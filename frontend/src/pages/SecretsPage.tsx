@@ -14,6 +14,31 @@ const algorithms: EncryptionAlgorithm[] = [
   "base64"
 ];
 
+const copyTextToClipboard = async (text: string) => {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  if (typeof document === "undefined") {
+    throw new Error("Clipboard is not available in this environment.");
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+
+  if (!copied) {
+    throw new Error("Copy failed. Please copy manually.");
+  }
+};
+
 export default function SecretsPage() {
   const { token } = useAuth();
   const [secrets, setSecrets] = useState<SecretMeta[]>([]);
@@ -204,7 +229,7 @@ export default function SecretsPage() {
     setIsLoading(true);
     try {
       const response = await api.getCipherPayload(token, secretId);
-      await navigator.clipboard.writeText(response.cipher.encrypted_value);
+      await copyTextToClipboard(response.cipher.encrypted_value);
       setSuccess("Cipher copied to clipboard.");
       setIsLoading(false);
     } catch (err) {
