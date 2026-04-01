@@ -6,12 +6,12 @@ SentriVault helps teams store and manage sensitive values securely with encrypti
 
 ## Core Capabilities
 
-- Secrets encryption at rest with authenticated encryption support in backend crypto utilities.
-- Role-based access control on API routes with runtime permission checks.
-- Immutable audit logging for authentication, secret access, updates, and governance actions.
-- Secret lifecycle controls including access, assignment, rotation workflow, and revoke flow.
-- Risk insights endpoint for security posture visibility.
-- CI/CD with GitHub Actions for backend deployment to Elastic Beanstalk and frontend deployment to S3.
+- Secrets are encrypted when they are not in use, and backend crypto utilities support authenticated encryption.
+- Role-based access control on API routes with checks for permissions at runtime.
+- Unchangeable audit logs for authentication, secret access, updates, and governance actions.
+- Secret lifecycle controls, such as access, assignment, rotation workflow, and revoke flow.
+- Risk insights endpoint to see how secure your system is.
+- CI/CD with GitHub Actions to deploy the backend to Elastic Beanstalk and the frontend to S3.
 
 ## Tech Stack
 
@@ -199,21 +199,21 @@ Workflow file:
 
 - .github/workflows/ci-cd.yml
 
-Pipeline summary:
+Pipeline Overview:
 
-1. CI job builds backend and frontend on pushes/PRs.
-2. Backend CD packages backend and deploys to Elastic Beanstalk via S3 artifact.
-3. Frontend CD builds Vite assets and syncs frontend/dist to S3.
+1. CI builds the front and back end of the application as code gets pushed or PRs created.
+2. Continuous Deployment - Backend: Backend is packaged and deployed to AWS Elastic Beanstalk through S3 artifact.
+3. Continuous Deployment - Frontend: Vite assets are built and the assets are synced to S3 from frontend/dist.
 
-Expected GitHub secrets include AWS credentials, region, Elastic Beanstalk settings, frontend bucket, and API base URL.
+Assumed GitHub secrets: AWS access credentials, AWS region, AWS Elastic Beanstalk configuration, S3 bucket for front-end, and base URL for API.
 
-## Deployment Notes
+## Deployment Guidelines
 
-- Backend: AWS Elastic Beanstalk.
-- Frontend: S3 static hosting.
-- Configure backend CORS_ORIGIN to include your S3 website origin.
+- Backend - AWS Elastic Beanstalk.
+- Frontend - S3 static website hosting.
+- The CORS_ORIGIN for the backend must include the origin of the S3 website.
 
-## Documentation
+## Documentation Files
 
 - docs/step-1-project-structure.md
 - docs/step-2-database-schema.md
