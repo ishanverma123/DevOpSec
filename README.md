@@ -35,7 +35,8 @@ SentriVault helps teams store and manage sensitive values securely with encrypti
 - GitHub Actions CI/CD
 - AWS Elastic Beanstalk (backend)
 - Amazon S3 static hosting (frontend)
-- Docker Compose (local PostgreSQL)
+
+NOTE - All the below configuration are for local setup. For AWS - refer docs/architecture.md
 
 ## Repository Structure
 
@@ -58,8 +59,6 @@ DevOpSec/
 │  │  └─ layouts/
 ├─ .github/workflows/     # CI/CD pipeline
 ├─ docs/
-├─ infra/
-└─ report/
 ```
 
 ## Local Setup
@@ -67,14 +66,14 @@ DevOpSec/
 ### 1. Start PostgreSQL
 
 ```bash
-docker-compose up -d
+postgres -U localhost -| user@password ${dbname}
 ```
 
 ### 2. Backend Setup
 
 ```bash
 cd backend
-cp .env.example .env
+cp .env
 npm install
 npm run build
 ```
