@@ -21,6 +21,7 @@ export default function App() {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
 
+          {/* Everything under /dashboard must be authenticated. */}
           <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route path="secrets" element={<SecretsPage />} />
@@ -32,6 +33,7 @@ export default function App() {
             </Route>
           </Route>
 
+          {/* Unknown routes fall back to landing instead of blank state. */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

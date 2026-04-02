@@ -10,6 +10,7 @@ import apiRouter from "./routes";
 
 const app = express();
 
+// Accept comma-separated origins so local + deployed frontend can coexist.
 const allowedOrigins = env.CORS_ORIGIN.split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -36,6 +37,7 @@ const corsOptions: cors.CorsOptions = {
 
 app.use(helmet());
 app.use(cors(corsOptions));
+// Reply to preflight requests before hitting route handlers.
 app.options("*", cors(corsOptions));
 app.use(
   rateLimit({

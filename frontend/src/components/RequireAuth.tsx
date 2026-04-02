@@ -7,6 +7,7 @@ export default function RequireAuth() {
   const location = useLocation();
 
   if (!isAuthenticated) {
+    // Keep the last route so sign-in flow can return user to intended page.
     return <Navigate to="/signin" state={{ from: location.pathname }} replace />;
   }
 

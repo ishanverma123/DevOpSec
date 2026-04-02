@@ -12,6 +12,7 @@ export const requirePermission = (permissionKey: string) => {
       return;
     }
 
+    // Keep permission checks in DB so role updates take effect immediately.
     const result = await pool.query(
       `
         SELECT 1

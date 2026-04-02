@@ -1,5 +1,6 @@
 import type { AuditLog, CipherPayload, EncryptionAlgorithm, RiskInsightsResponse, Role, SecretMeta, User } from "../types";
 
+// One base URL keeps local and deployed builds switching via env only.
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api/v1";
 
 type ApiOptions = {
@@ -20,6 +21,7 @@ const apiRequest = async <T>(path: string, options: ApiOptions = {}): Promise<T>
 
   const data = await response.json().catch(() => ({}));
 
+  // Backend usually sends { message }, fallback keeps errors readable.
   if (!response.ok) {
     throw new Error(data.message ?? `Request failed (${response.status})`);
   }

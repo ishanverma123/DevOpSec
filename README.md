@@ -6,12 +6,12 @@ SentriVault helps teams store and manage sensitive values securely with encrypti
 
 ## Core Capabilities
 
-- Secrets are encrypted when they are not in use, and backend crypto utilities support authenticated encryption.
-- Role-based access control on API routes with checks for permissions at runtime.
-- Unchangeable audit logs for authentication, secret access, updates, and governance actions.
-- Secret lifecycle controls, such as access, assignment, rotation workflow, and revoke flow.
-- Risk insights endpoint to see how secure your system is.
-- CI/CD with GitHub Actions to deploy the backend to Elastic Beanstalk and the frontend to S3.
+- When secrets aren't being used, they are encrypted, and backend crypto tools support authenticated encryption.
+- Checks for permissions at runtime on API routes based on roles.
+- Audit logs that can't be changed for authentication, secret access, updates, and governance actions.
+- Secret lifecycle controls include access, assignment, rotation workflow, and revoke flow.
+- Risk insights endpoint to check the safety of your system.
+- Use GitHub Actions to do CI/CD to put the backend on Elastic Beanstalk and the frontend on S3.
 
 ## Tech Stack
 
@@ -186,25 +186,24 @@ Base path: /api/v1
 
 ## Security Controls
 
-- Route-level auth and RBAC middleware.
-- CORS allowlist via CORS_ORIGIN.
-- Request validation using Zod.
-- API hardening with Helmet and rate limiting.
-- Secret encryption/decryption utilities with audit-aware workflows.
+- Middleware for route-level authentication and role-based access control.
+- CORS_ORIGIN lets you set up a CORS allowlist.
+- Use Zod to check requests.
+- Helmet and rate limiting to make the API more secure.
+- Tools for secret encryption and decryption that work with audit-aware workflows.
 
 ## CI/CD
 
-Workflow file:
-
+File for the workflow:
 - .github/workflows/ci-cd.yml
 
-Pipeline Overview:
+An Overview of the Pipeline:
 
-1. CI builds the front and back end of the application as code gets pushed or PRs created.
-2. Continuous Deployment - Backend: Backend is packaged and deployed to AWS Elastic Beanstalk through S3 artifact.
-3. Continuous Deployment - Frontend: Vite assets are built and the assets are synced to S3 from frontend/dist.
+1. CI builds the front and back ends of the app when code is pushed or PRs are made.
+2. Continuous Deployment—Backend: The backend is put together and sent to AWS Elastic Beanstalk using S3 artifacts.
+3. Continuous Deployment - Frontend: The assets for Vite are built, and then the assets are synced to S3 from frontend/dist.
 
-Assumed GitHub secrets: AWS access credentials, AWS region, AWS Elastic Beanstalk configuration, S3 bucket for front-end, and base URL for API.
+We thought that GitHub secrets included AWS access credentials, the AWS region, the AWS Elastic Beanstalk configuration, the S3 bucket for the front end, and the base URL for the API.
 
 ## Deployment Guidelines
 

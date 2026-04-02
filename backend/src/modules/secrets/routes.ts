@@ -71,6 +71,7 @@ const getOrganizationId = async (userId: string) => {
 };
 
 const canManageSecret = async (userId: string, secretId: string) => {
+  // Owners can always manage their own secrets.
   const ownerResult = await pool.query(
     "SELECT 1 FROM secrets WHERE id = $1 AND owner_user_id = $2 LIMIT 1",
     [secretId, userId]
@@ -80,6 +81,7 @@ const canManageSecret = async (userId: string, secretId: string) => {
     return true;
   }
 
+  // Admin is the fallback manager for cross-user governance actions.
   return isAdmin(userId);
 };
 
@@ -110,6 +112,7 @@ const canRotateSecret = async (userId: string, secretId: string) => {
 };
 
 const applyExpiryStatus = async (organizationId: string) => {
+  // Expiry is materialized in DB to keep list queries and policies consistent.
   await pool.query(
     `
       UPDATE secrets
@@ -137,6 +140,7 @@ router.get(
     const isGuestSuperUser = requesterEmail === "guest@devopsec.local";
 
     if (isGuestSuperUser) {
+      // Guest demo mode can view active/recent data across organizations.
       const result = await pool.query(
         `
           SELECT DISTINCT s.id, s.name, s.description, s.owner_user_id, s.current_version, s.status,

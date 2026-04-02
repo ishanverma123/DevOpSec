@@ -17,6 +17,7 @@ export default function LandingPage() {
     setIsGuestLoading(true);
 
     try {
+      // Guest login is useful for demos when you want instant access.
       await loginAsGuest();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Guest access failed");
