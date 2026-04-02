@@ -29,7 +29,7 @@ export default function LandingPage() {
     <main className="landing-shell">
       <section className="landing-hero">
         <p className="landing-kicker">DevOpSec Platform</p>
-        <h1>Secrets. Reduce Drift. Ship with Confidence.</h1>
+        <h1>Secure Secrets. Reduce Drift. Ship with Confidence.</h1>
         <p className="landing-copy">
           A focused workspace for managing secret lifecycle, access assignment, audit history, and policy-driven
           rotation across your organization.
